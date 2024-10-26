@@ -1,0 +1,46 @@
+version: '3.4'
+
+services:
+  webapi1:
+    image: loadbalancer
+    build:
+      context: .
+      dockerfile: LoadBalancer.WebAPI/Dockerfile
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db;Database=LoadBalancerDatabase;User Id=sa;Password=Admin@123;Trusted_Connection=False;MultipleActiveResultSets=true
+    depends_on:
+      - db
+
+  webapi2:
+    image: loadbalancer
+    build:
+      context: .
+      dockerfile: LoadBalancer.WebAPI/Dockerfile
+    ports:
+      - "5002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db;Database=LoadBalancerDatabase;User Id=sa;Password=Admin@123;Trusted_Connection=False;MultipleActiveResultSets=true
+    depends_on:
+      - db
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Admin@123
+    ports:
+      - "1433:1433"
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - webapi1
+      - webapi2
