@@ -1,7 +1,11 @@
 ﻿using LoadBalancer.WebAPI.Data;
+using LoadBalancer.WebAPI.Hubs;
 using LoadBalancer.WebAPI.Models;
 using LoadBalancer.WebAPI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 
 namespace LoadBalancer.WebAPI.Controllers
 {
@@ -11,24 +15,34 @@ namespace LoadBalancer.WebAPI.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly EquationsService _equationsService;
+        private readonly IHubContext<TaskHub> _hubContext;
+        private const int MAX_UNKNOWN_LIMIT = 10;
 
-        public TasksController(ApplicationDbContext context, EquationsService equationsService)
+        public TasksController(ApplicationDbContext context, EquationsService equationsService, IHubContext<TaskHub> hubContext)
         {
             _context = context;
             _equationsService = equationsService;
+            _hubContext = hubContext;
+
+            _equationsService.OnProgressUpdate += (progress) => SendProgressUpdate(progress);
         }
 
         [HttpPost]
-        public ActionResult<TaskState> StartTask([FromBody] TaskRequest request)
+        public async Task<ActionResult<TaskState>> StartTask([FromBody] TaskRequest request)
         {
             if (request.A.Length != request.b.Length)
             {
                 return BadRequest("Matrix A and vector b dimensions do not match.");
             }
 
+            if (request.A.GetLength(0) > MAX_UNKNOWN_LIMIT)
+            {
+                return BadRequest("Exceeded maximum number of unknowns.");
+            }
+
             var taskStatus = new TaskState { State = "In Progress", Progress = 0 };
             _context.TaskStates.Add(taskStatus);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             double[] result;
             try
@@ -44,15 +58,37 @@ namespace LoadBalancer.WebAPI.Controllers
             }
 
             taskStatus.Progress = 100;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok(taskStatus);
         }
 
-        [HttpGet("history")]
-        public ActionResult<List<TaskState>> GetTaskHistory()
+        private async void SendProgressUpdate(int progress)
         {
-            var history = _context.TaskStates.ToList();
+            var taskId = _context.TaskStates.OrderByDescending(ts => ts.Id).FirstOrDefault()?.Id;
+            if (taskId.HasValue)
+            {
+                await _hubContext.Clients.All.SendAsync("ReceiveTaskProgress", taskId.Value, progress);
+            }
+        }
+
+        [HttpPost("cancel/{id}")]
+        public async Task<IActionResult> CancelTask(int id)
+        {
+            var task = await _context.TaskStates.FindAsync(id);
+            if (task == null)
+                return NotFound();
+
+            task.State = "Canceled";
+            await _context.SaveChangesAsync();
+
+            return Ok("Task canceled.");
+        }
+
+        [HttpGet("history")]
+        public async Task<ActionResult<List<TaskState>>> GetTaskHistory()
+        {
+            var history = await _context.TaskStates.ToListAsync();
             return Ok(history);
         }
     }

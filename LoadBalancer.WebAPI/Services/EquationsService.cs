@@ -1,8 +1,13 @@
-﻿namespace LoadBalancer.WebAPI.Services
+﻿using System;
+
+namespace LoadBalancer.WebAPI.Services
 {
     public class EquationsService
     {
-        public double[] Solve(double[,] A, double[] b)
+        public delegate void ProgressUpdateHandler(int progress);
+        public event ProgressUpdateHandler OnProgressUpdate;
+
+        public double[] Solve(double[][] A, double[] b)
         {
             int n = b.Length;
 
@@ -10,14 +15,12 @@
             {
                 for (int j = i + 1; j < n; j++)
                 {
-                    if (Math.Abs(A[j, i]) > Math.Abs(A[i, i]))
+                    if (Math.Abs(A[j][i]) > Math.Abs(A[i][i]))
                     {
-                        for (int k = 0; k < n; k++)
-                        {
-                            double temp = A[i, k];
-                            A[i, k] = A[j, k];
-                            A[j, k] = temp;
-                        }
+                        var tempRow = A[i];
+                        A[i] = A[j];
+                        A[j] = tempRow;
+
                         double tempB = b[i];
                         b[i] = b[j];
                         b[j] = tempB;
@@ -26,24 +29,29 @@
 
                 for (int j = i + 1; j < n; j++)
                 {
-                    double factor = A[j, i] / A[i, i];
+                    double factor = A[j][i] / A[i][i];
                     for (int k = i; k < n; k++)
                     {
-                        A[j, k] -= factor * A[i, k];
+                        A[j][k] -= factor * A[i][k];
                     }
                     b[j] -= factor * b[i];
                 }
+
+                int progress = (int)((i + 1) / (double)n * 100);
+                OnProgressUpdate?.Invoke(progress);
             }
 
             double[] x = new double[n];
             for (int i = n - 1; i >= 0; i--)
             {
-                x[i] = b[i] / A[i, i];
+                x[i] = b[i] / A[i][i];
                 for (int j = i + 1; j < n; j++)
                 {
-                    x[i] -= A[i, j] * x[j] / A[i, i];
+                    x[i] -= A[i][j] * x[j] / A[i][i];
                 }
             }
+
+            OnProgressUpdate?.Invoke(100);
             return x;
         }
     }

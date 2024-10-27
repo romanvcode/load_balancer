@@ -1,4 +1,5 @@
 using LoadBalancer.WebAPI.Data;
+using LoadBalancer.WebAPI.Hubs;
 using LoadBalancer.WebAPI.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddScoped<EquationsService>();
 
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -22,5 +25,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<TaskHub>("/taskHub");
 
 app.Run();
