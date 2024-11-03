@@ -1,5 +1,7 @@
 using LoadBalancer.WebAPI.Data;
+using LoadBalancer.WebAPI.Helpers;
 using LoadBalancer.WebAPI.Hubs;
+using LoadBalancer.WebAPI.Middlewares;
 using LoadBalancer.WebAPI.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +15,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<EquationsService>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 
 builder.Services.AddSignalR();
 
@@ -23,6 +28,8 @@ var app = builder.Build();
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+
+app.UseMiddleware<JwtMiddleware>();
 
 app.MapControllers();
 

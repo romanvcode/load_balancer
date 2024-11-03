@@ -1,15 +1,16 @@
 ﻿using LoadBalancer.WebAPI.Data;
+using LoadBalancer.WebAPI.Helpers;
 using LoadBalancer.WebAPI.Hubs;
 using LoadBalancer.WebAPI.Models;
 using LoadBalancer.WebAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
 
 namespace LoadBalancer.WebAPI.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/tasks")]
     public class TasksController : ControllerBase
     {
@@ -27,7 +28,7 @@ namespace LoadBalancer.WebAPI.Controllers
             _equationsService.OnProgressUpdate += (progress) => SendProgressUpdate(progress);
         }
 
-        [HttpPost]
+        [HttpPost("start")]
         public async Task<ActionResult<TaskState>> StartTask([FromBody] TaskRequest request)
         {
             if (request.A.Length != request.b.Length)
