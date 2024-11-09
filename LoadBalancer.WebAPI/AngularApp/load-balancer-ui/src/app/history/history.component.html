@@ -1,0 +1,34 @@
+<div class="task-history-container">
+  <h2>Task History</h2>
+
+  <table class="task-history-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Progress</th>
+        <th>State</th>
+        <th>Created At</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let task of currentPageTasks">
+        <td>{{ task.id }}</td>
+        <td>{{ task.progress }}%</td>
+        <td>{{ task.state }}</td>
+        <td>{{ task.createdAt | date : "short" }}</td>
+        <td>{{ task.result || "N/A" }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="pagination">
+    <button (click)="prevPage()" [disabled]="currentPage === 0">
+      Previous
+    </button>
+    <span>{{ currentPage + 1 }} / {{ totalPages }}</span>
+    <button (click)="nextPage()" [disabled]="currentPage === totalPages - 1">
+      Next
+    </button>
+  </div>
+</div>

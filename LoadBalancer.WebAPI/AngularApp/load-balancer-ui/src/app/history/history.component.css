@@ -1,0 +1,46 @@
+.task-history-container {
+  width: 80%;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: center;
+}
+h2 {
+  margin-bottom: 20px;
+}
+.task-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+.task-history-table th,
+.task-history-table td {
+  padding: 10px;
+  text-align: left;
+  border: 1px solid #ddd;
+}
+.task-history-table th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+.task-history-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+.pagination button {
+  padding: 5px 15px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
+.pagination button:disabled {
+  background-color: #ddd;
+  cursor: not-allowed;
+}

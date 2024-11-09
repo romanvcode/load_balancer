@@ -1,0 +1,36 @@
+<div class="container">
+  <h1>Matrix Equation Solver</h1>
+
+  <form (ngSubmit)="onSubmit()" #equationForm="ngForm">
+    <div>
+      <label for="size">SIZE:</label>
+      <input
+        id="size"
+        type="number"
+        [(ngModel)]="size"
+        name="size"
+        required
+        placeholder="e.g. 500"
+        class="input-textarea"
+      />
+    </div>
+
+    <button
+      type="submit"
+      [disabled]="!equationForm.form.valid"
+      class="submit-button"
+    >
+      Start Calculation
+    </button>
+  </form>
+
+  <div>
+    <p class="progress">Progress: {{ progress }}%</p>
+    <mat-progress-bar mode="determinate" [value]="progress"></mat-progress-bar>
+  </div>
+
+  <div *ngIf="result">
+    <p>Result:</p>
+    <p>{{ result }}</p>
+  </div>
+</div>
