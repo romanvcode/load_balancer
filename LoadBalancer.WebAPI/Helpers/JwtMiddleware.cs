@@ -1,5 +1,5 @@
 ﻿using LoadBalancer.WebAPI.Helpers;
-using LoadBalancer.WebAPI.Services;
+using LoadBalancer.WebAPI.ServiceContracts;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;

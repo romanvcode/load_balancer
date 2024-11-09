@@ -1,6 +1,6 @@
 ﻿using LoadBalancer.WebAPI.Models;
 
-namespace LoadBalancer.WebAPI.Services;
+namespace LoadBalancer.WebAPI.ServiceContracts;
 
 public interface IUserService
 {

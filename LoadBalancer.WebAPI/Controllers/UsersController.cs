@@ -1,11 +1,11 @@
 ﻿using LoadBalancer.WebAPI.Helpers;
 using LoadBalancer.WebAPI.Models;
-using LoadBalancer.WebAPI.Services;
+using LoadBalancer.WebAPI.ServiceContracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LoadBalancer.WebAPI.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/users")]
 [ApiController]
 public class UsersController : ControllerBase
 {

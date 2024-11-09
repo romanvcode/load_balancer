@@ -1,14 +1,14 @@
 ﻿using LoadBalancer.WebAPI.Data;
 using LoadBalancer.WebAPI.Helpers;
-using LoadBalancer.WebAPI.Hubs;
 using LoadBalancer.WebAPI.Models;
 using LoadBalancer.WebAPI.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace LoadBalancer.WebAPI.Controllers
 {
+    using System.Threading;
+
     [ApiController]
     [Authorize]
     [Route("api/tasks")]
@@ -16,41 +16,41 @@ namespace LoadBalancer.WebAPI.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly EquationsService _equationsService;
-        private readonly IHubContext<TaskHub> _hubContext;
-        private const int MAX_UNKNOWN_LIMIT = 10;
+        private readonly IServiceProvider _serviceProvider;
+        private static readonly Dictionary<int, CancellationTokenSource> _cancellationTokens = new Dictionary<int, CancellationTokenSource>();
 
-        public TasksController(ApplicationDbContext context, EquationsService equationsService, IHubContext<TaskHub> hubContext)
+        public TasksController(ApplicationDbContext context, EquationsService equationsService, IServiceProvider serviceProvider)
         {
             _context = context;
             _equationsService = equationsService;
-            _hubContext = hubContext;
+            _serviceProvider = serviceProvider;
 
             _equationsService.OnProgressUpdate += (progress) => SendProgressUpdate(progress);
         }
 
         [HttpPost("start")]
-        public async Task<ActionResult<TaskState>> StartTask([FromBody] TaskRequest request)
+        public async Task<ActionResult<TaskState>> StartTask([FromBody] int size)
         {
-            if (request.A.Length != request.b.Length)
-            {
-                return BadRequest("Matrix A and vector b dimensions do not match.");
-            }
-
-            if (request.A.GetLength(0) > MAX_UNKNOWN_LIMIT)
-            {
-                return BadRequest("Exceeded maximum number of unknowns.");
-            }
+            using var scope = _serviceProvider.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             var taskStatus = new TaskState { State = "In Progress", Progress = 0 };
-            _context.TaskStates.Add(taskStatus);
-            await _context.SaveChangesAsync();
+            db.TaskStates.Add(taskStatus);
+            await db.SaveChangesAsync();
+
+            var cancellationTokenSource = new CancellationTokenSource();
+            _cancellationTokens[taskStatus.Id] = cancellationTokenSource;
 
             double[] result;
             try
             {
-                result = _equationsService.Solve(request.A, request.b);
+                result = _equationsService.Solve(size, cancellationTokenSource.Token);
                 taskStatus.State = "Completed";
                 taskStatus.Result = string.Join(", ", result);
+            }
+            catch (OperationCanceledException)
+            {
+                taskStatus.State = "Canceled";
             }
             catch (Exception ex)
             {
@@ -58,18 +58,20 @@ namespace LoadBalancer.WebAPI.Controllers
                 return StatusCode(500, taskStatus);
             }
 
-            taskStatus.Progress = 100;
-            await _context.SaveChangesAsync();
-
+            await db.SaveChangesAsync();
             return Ok(taskStatus);
         }
 
-        private async void SendProgressUpdate(int progress)
+        private async Task SendProgressUpdate(int progress)
         {
-            var taskId = _context.TaskStates.OrderByDescending(ts => ts.Id).FirstOrDefault()?.Id;
-            if (taskId.HasValue)
+            using var scope = _serviceProvider.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var task = db.TaskStates.OrderByDescending(ts => ts.Id).FirstOrDefault();
+            if (task != null)
             {
-                await _hubContext.Clients.All.SendAsync("ReceiveTaskProgress", taskId.Value, progress);
+                task.Progress = progress;
+                await db.SaveChangesAsync();
             }
         }
 
@@ -80,10 +82,16 @@ namespace LoadBalancer.WebAPI.Controllers
             if (task == null)
                 return NotFound();
 
-            task.State = "Canceled";
-            await _context.SaveChangesAsync();
+            if (_cancellationTokens.ContainsKey(id))
+            {
+                var cancellationTokenSource = _cancellationTokens[id];
+                cancellationTokenSource.Cancel();
+                task.State = "Canceled";
+                await _context.SaveChangesAsync();
+                return Ok("Task canceled.");
+            }
 
-            return Ok("Task canceled.");
+            return NotFound("Cancellation token not found.");
         }
 
         [HttpGet("history")]

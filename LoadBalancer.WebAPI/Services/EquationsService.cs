@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Threading;
 
 namespace LoadBalancer.WebAPI.Services
 {
@@ -7,24 +7,21 @@ namespace LoadBalancer.WebAPI.Services
         public delegate void ProgressUpdateHandler(int progress);
         public event ProgressUpdateHandler OnProgressUpdate;
 
-        public double[] Solve(double[][] A, double[] b)
+        public double[] Solve(int n, CancellationToken cancellationToken)
         {
-            int n = b.Length;
+            double[][] A = MatrixService.GenerateMatrix(n);
+            double[] b = MatrixService.GenerateVector(n);
 
             for (int i = 0; i < n; i++)
             {
-                for (int j = i + 1; j < n; j++)
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    if (Math.Abs(A[j][i]) > Math.Abs(A[i][i]))
-                    {
-                        var tempRow = A[i];
-                        A[i] = A[j];
-                        A[j] = tempRow;
+                    throw new OperationCanceledException();
+                }
 
-                        double tempB = b[i];
-                        b[i] = b[j];
-                        b[j] = tempB;
-                    }
+                if (Math.Abs(A[i][i]) < 1e-10)
+                {
+                    throw new InvalidOperationException("Matrix A is singular or nearly singular.");
                 }
 
                 for (int j = i + 1; j < n; j++)
@@ -54,5 +51,6 @@ namespace LoadBalancer.WebAPI.Services
             OnProgressUpdate?.Invoke(100);
             return x;
         }
+
     }
 }
